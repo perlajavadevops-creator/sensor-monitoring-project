@@ -1,25 +1,33 @@
 package com.manikanta.sensor.service;
 
 import com.manikanta.common.model.AlertLevel;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
 
 @Service
+@Slf4j
 public class SensorSimulatorService {
 
     private final Random random = new Random();
 
     public double generateTemperature() {
-        return 15.0 + (random.nextDouble() * 25.0);
+        double temp = 15.0 + (random.nextDouble() * 25.0);
+        log.trace("Simulated temperature: {}", temp);
+        return temp;
     }
 
     public AlertLevel evaluateAlertLevel(double temperature) {
+        AlertLevel level;
         if (temperature > 35.0) {
-            return AlertLevel.CRITICAL;
+            level = AlertLevel.CRITICAL;
         } else if (temperature > 30.0) {
-            return AlertLevel.WARNING;
+            level = AlertLevel.WARNING;
+        } else {
+            level = AlertLevel.NORMAL;
         }
-        return AlertLevel.NORMAL;
+        log.trace("Evaluated alert level for {}: {}", temperature, level);
+        return level;
     }
 }

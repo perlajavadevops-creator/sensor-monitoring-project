@@ -11,6 +11,15 @@ jwt:
   secret: ${JWT_SECRET:ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890}
   expiration-ms: 3600000
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 logging:
   level:
     com.manikanta: DEBUG
