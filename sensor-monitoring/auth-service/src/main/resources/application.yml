@@ -1,0 +1,16 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  main:
+    allow-bean-definition-overriding: true
+
+jwt:
+  secret: ${JWT_SECRET:ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890}
+  expiration-ms: 3600000
+
+logging:
+  level:
+    com.manikanta: DEBUG

@@ -1,0 +1,45 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: sensor-service
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:sensordb}
+    username: ${DB_USERNAME:sensoruser}
+    password: ${DB_PASSWORD:sensorpass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: sensor-monitoring-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.type.mapping: "com.manikanta.sensormonitoring.dto.SensorEvent:com.manikanta.common.dto.SensorEvent"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: "com.manikanta.common.dto.SensorEvent:com.manikanta.common.dto.SensorEvent"
+
+jwt:
+  secret: ${JWT_SECRET:ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890}
+
+app:
+  sensor:
+    interval-ms: ${SENSOR_INTERVAL_MS:10000}
+  device-service:
+    url: ${DEVICE_SERVICE_URL:http://device-service:8082}
+
+logging:
+  level:
+    com.manikanta: DEBUG
+    org.springframework.kafka: INFO

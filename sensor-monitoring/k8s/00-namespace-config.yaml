@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sensor-monitoring
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensor-config
+  namespace: sensor-monitoring
+data:
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "sensordb"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  SENSOR_INTERVAL_MS: "10000"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sensor-secrets
+  namespace: sensor-monitoring
+type: Opaque
+stringData:
+  DB_USERNAME: sensoruser
+  DB_PASSWORD: sensorpass
+  JWT_SECRET: ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890

@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: sensor-monitoring
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:sensordb}
+    username: ${DB_USERNAME:sensoruser}
+    password: ${DB_PASSWORD:sensorpass}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+jwt:
+  secret: ${JWT_SECRET:ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+
+sensor:
+  simulation:
+    interval-ms: ${SENSOR_INTERVAL_MS:10000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    root: INFO
+    com.example.sensormonitoring: DEBUG
+    org.apache.kafka: WARN

@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensor-monitoring-app
+  namespace: sensor-monitoring
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sensor-monitoring-app
+  template:
+    metadata:
+      labels:
+        app: sensor-monitoring-app
+    spec:
+      containers:
+        - name: sensor-monitoring-app
+          # Replace with your image, e.g. yourdockerhubuser/sensor-monitoring:latest
+          image: yourdockerhubuser/sensor-monitoring:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: sensor-config
+            - secretRef:
+                name: sensor-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 15
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sensor-monitoring-app
+  namespace: sensor-monitoring
+spec:
+  selector:
+    app: sensor-monitoring-app
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sensor-monitoring-hpa
+  namespace: sensor-monitoring
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sensor-monitoring-app
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
