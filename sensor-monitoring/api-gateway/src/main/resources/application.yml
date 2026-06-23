@@ -6,46 +6,71 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      # Every downstream route the gateway is allowed to proxy to.
-      # Clients only ever talk to this service - auth-service,
-      # device-service and sensor-service are not published outside
-      # the docker network anymore (see docker-compose.yml).
       routes:
         - id: auth-service
           uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
           predicates:
             - Path=/api/v1/auth/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: authServiceCircuitBreaker
+                fallbackUri: forward:/fallback/auth
 
         - id: device-service
           uri: ${DEVICE_SERVICE_URL:http://device-service:8082}
           predicates:
             - Path=/api/v1/devices/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: deviceServiceCircuitBreaker
+                fallbackUri: forward:/fallback/device
 
         - id: sensor-service
           uri: ${SENSOR_SERVICE_URL:http://sensor-service:8083}
           predicates:
             - Path=/api/v1/sensors/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: sensorServiceCircuitBreaker
+                fallbackUri: forward:/fallback/sensor
 
       httpclient:
         connect-timeout: 3000
         response-timeout: 8s
 
-      # Forward the real client IP to downstream services via
-      # X-Forwarded-For so their existing per-IP RateLimitingFilter
-      # keeps working correctly behind the proxy.
       x-forwarded:
         enabled: true
         for-enabled: true
         proto-enabled: true
         host-enabled: true
 
-# Must be identical to the secret used by auth-service to sign tokens,
-# and by device-service / sensor-service to verify them.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      authServiceCircuitBreaker:
+        baseConfig: default
+      deviceServiceCircuitBreaker:
+        baseConfig: default
+      sensorServiceCircuitBreaker:
+        baseConfig: default
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+
 jwt:
   secret: ${JWT_SECRET:ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890}
 
-# Paths the JwtAuthenticationFilter lets through without a token.
-# Everything else (devices, sensors, ...) requires "Authorization: Bearer <token>".
 gateway:
   security:
     public-paths:
@@ -53,6 +78,7 @@ gateway:
       - /actuator/health
       - /actuator/health/**
       - /actuator/prometheus
+      - /fallback/**
 
 management:
   endpoints:
