@@ -4,6 +4,7 @@ import com.manikanta.sensor.client.DeviceClient;
 import com.manikanta.sensor.service.SensorReadingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ public class SensorDataScheduler {
     private final DeviceClient deviceClient;
 
     @Scheduled(fixedRateString = "${app.sensor.interval-ms:30000}")
+    @CircuitBreaker(name = "deviceServiceCircuitBreaker", fallbackMethod = "deviceFallback")
     public void generateSensorData() {
         log.info("Starting scheduled sensor data generation...");
         try {
@@ -42,5 +44,11 @@ public class SensorDataScheduler {
         } catch (Exception e) {
             log.error("Error during scheduled sensor data generation: {}", e.getMessage());
         }
+    }
+
+    // Fallback method for CircuitBreaker - must have same signature plus Throwable
+    public void deviceFallback(Throwable t) {
+        log.error("Device service is unavailable - circuit breaker fallback triggered: {}", t == null ? "unknown" : t.getMessage());
+        // Optionally, we could emit synthetic sensor events or skip the cycle.
     }
 }

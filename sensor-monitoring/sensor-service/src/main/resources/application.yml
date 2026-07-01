@@ -16,6 +16,8 @@ spring:
       ddl-auto: update
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    admin:
+      auto-create: true
     consumer:
       group-id: sensor-monitoring-group
       auto-offset-reset: earliest
@@ -39,7 +41,33 @@ app:
   device-service:
     url: ${DEVICE_SERVICE_URL:http://device-service:8082}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 logging:
   level:
     com.manikanta: DEBUG
     org.springframework.kafka: INFO
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      deviceServiceCircuitBreaker:
+        baseConfig: default
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s

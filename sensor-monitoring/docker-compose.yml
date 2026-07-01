@@ -64,8 +64,8 @@ services:
       context: .
       dockerfile: auth-service/Dockerfile
     container_name: auth-service
-    ports:
-      - "8081:8081"
+    expose:
+      - "8081"
     environment:
       JWT_SECRET: ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890
     networks:
@@ -79,8 +79,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8082:8082"
+    expose:
+      - "8082"
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -103,8 +103,8 @@ services:
         condition: service_healthy
       device-service:
         condition: service_started
-    ports:
-      - "8083:8083"
+    expose:
+      - "8083"
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -118,8 +118,67 @@ services:
     networks:
       - sensor-net
 
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: api-gateway
+    depends_on:
+      auth-service:
+        condition: service_started
+      device-service:
+        condition: service_started
+      sensor-service:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      JWT_SECRET: ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890
+      AUTH_SERVICE_URL: http://auth-service:8081
+      DEVICE_SERVICE_URL: http://device-service:8082
+      SENSOR_SERVICE_URL: http://sensor-service:8083
+    networks:
+      - sensor-net
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: sensor-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_config:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - sensor-net
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    container_name: sensor-grafana
+    user: "0"
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - grafana_provisioning:/etc/grafana/provisioning
+    networks:
+      - sensor-net
+
 volumes:
   postgres_data:
+  prometheus_config:
+  prometheus_data:
+  grafana_data:
+  grafana_provisioning:
 
 networks:
   sensor-net:

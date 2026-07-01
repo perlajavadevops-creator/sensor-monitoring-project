@@ -1,0 +1,95 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: authServiceCircuitBreaker
+                fallbackUri: forward:/fallback/auth
+
+        - id: device-service
+          uri: ${DEVICE_SERVICE_URL:http://device-service:8082}
+          predicates:
+            - Path=/api/v1/devices/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: deviceServiceCircuitBreaker
+                fallbackUri: forward:/fallback/device
+
+        - id: sensor-service
+          uri: ${SENSOR_SERVICE_URL:http://sensor-service:8083}
+          predicates:
+            - Path=/api/v1/sensors/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: sensorServiceCircuitBreaker
+                fallbackUri: forward:/fallback/sensor
+
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 8s
+
+      x-forwarded:
+        enabled: true
+        for-enabled: true
+        proto-enabled: true
+        host-enabled: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      authServiceCircuitBreaker:
+        baseConfig: default
+      deviceServiceCircuitBreaker:
+        baseConfig: default
+      sensorServiceCircuitBreaker:
+        baseConfig: default
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+
+jwt:
+  secret: ${JWT_SECRET:ThisIsADemoSecretKeyForPOC_PleaseChangeInProd_1234567890}
+
+gateway:
+  security:
+    public-paths:
+      - /api/v1/auth/**
+      - /actuator/health
+      - /actuator/health/**
+      - /actuator/prometheus
+      - /fallback/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,gateway,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.manikanta: DEBUG
+    org.springframework.cloud.gateway: INFO

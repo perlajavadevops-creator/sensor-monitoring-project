@@ -8,6 +8,7 @@ import com.manikanta.device.model.Device;
 import com.manikanta.device.model.DeviceStatus;
 import com.manikanta.device.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,13 +16,16 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeviceService {
 
     private final DeviceRepository deviceRepository;
 
     @Transactional
     public DeviceResponse createDevice(DeviceRequest request) {
+        log.info("Creating new device with code: {}", request.getDeviceCode());
         if (deviceRepository.existsByDeviceCode(request.getDeviceCode())) {
+            log.error("Duplicate device code: {}", request.getDeviceCode());
             throw new DuplicateResourceException(
                     "Device with code '" + request.getDeviceCode() + "' already exists");
         }
@@ -33,11 +37,14 @@ public class DeviceService {
                 .status(request.getStatus() != null ? request.getStatus() : DeviceStatus.ACTIVE)
                 .build();
 
-        return toResponse(deviceRepository.save(device));
+        Device savedDevice = deviceRepository.save(device);
+        log.info("Device created successfully with id: {}", savedDevice.getId());
+        return toResponse(savedDevice);
     }
 
     @Transactional(readOnly = true)
     public List<DeviceResponse> getAllDevices() {
+        log.info("Fetching all devices");
         return deviceRepository.findAll()
                 .stream()
                 .map(this::toResponse)
@@ -46,25 +53,38 @@ public class DeviceService {
 
     @Transactional(readOnly = true)
     public DeviceResponse getDeviceById(Long id) {
+        log.info("Fetching device with id: {}", id);
         Device device = deviceRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Device not found with id: " + id));
+                .orElseThrow(() -> {
+                    log.error("Device not found with id: {}", id);
+                    return new ResourceNotFoundException("Device not found with id: " + id);
+                });
         return toResponse(device);
     }
 
     @Transactional(readOnly = true)
     public DeviceResponse getDeviceByCode(String deviceCode) {
+        log.info("Fetching device with code: {}", deviceCode);
         Device device = deviceRepository.findByDeviceCode(deviceCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Device not found with code: " + deviceCode));
+                .orElseThrow(() -> {
+                    log.error("Device not found with code: {}", deviceCode);
+                    return new ResourceNotFoundException("Device not found with code: " + deviceCode);
+                });
         return toResponse(device);
     }
 
     @Transactional
     public DeviceResponse updateDevice(Long id, DeviceRequest request) {
+        log.info("Updating device with id: {}", id);
         Device device = deviceRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Device not found with id: " + id));
+                .orElseThrow(() -> {
+                    log.error("Device not found with id: {}", id);
+                    return new ResourceNotFoundException("Device not found with id: " + id);
+                });
 
         if (!device.getDeviceCode().equals(request.getDeviceCode())
                 && deviceRepository.existsByDeviceCode(request.getDeviceCode())) {
+            log.error("Duplicate device code: {} for update", request.getDeviceCode());
             throw new DuplicateResourceException(
                     "Device with code '" + request.getDeviceCode() + "' already exists");
         }
@@ -76,15 +96,20 @@ public class DeviceService {
             device.setStatus(request.getStatus());
         }
 
-        return toResponse(deviceRepository.save(device));
+        Device updatedDevice = deviceRepository.save(device);
+        log.info("Device updated successfully with id: {}", updatedDevice.getId());
+        return toResponse(updatedDevice);
     }
 
     @Transactional
     public void deleteDevice(Long id) {
+        log.info("Deleting device with id: {}", id);
         if (!deviceRepository.existsById(id)) {
+            log.error("Device not found with id: {} for deletion", id);
             throw new ResourceNotFoundException("Device not found with id: " + id);
         }
         deviceRepository.deleteById(id);
+        log.info("Device deleted successfully with id: {}", id);
     }
 
     private DeviceResponse toResponse(Device device) {
